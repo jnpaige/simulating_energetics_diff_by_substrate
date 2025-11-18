@@ -1,20 +1,9 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2865
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+### README
 
-\f0\fs24 \cf0 ### README\
-\
-\
 This directory includes r code for simulating least cost paths across landscapes where there are two substrates with two separate costs. \
-\
-\
+
 The model folder contains an r script for training the model, and an r script for plotting the data implied by the posterior distributions. \
-\
+
 The simulation folder contains a folder with the functions employed in the simulation, and the simulation r code. \
-\
+
 The simulation produces a CSV file, which you should copy into the data directory of the model script when you have a parameterized simulation you are interested in studying. \
-\
-}
