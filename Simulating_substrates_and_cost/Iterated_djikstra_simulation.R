@@ -1,24 +1,16 @@
-### Iterated Djikstra sim v5.
-## This version has a trycatch in the simulation loop so that we skip over
-## the common edge cases where a lcp fails. Haven't diagnosed why it fails yet
-## But its in 1 in 20 or so simulations, so highly frequent. 
-## I've been developing different versions of the modelling function
-## To try to remove edge effects (doesn't seem to be the cause v5 function)
-## It might be because the xy coordinate is too close to the resource. 
-## But, I tried but still regular failures (v6)
-## For now I keep skipping them. 
-## Ok figures it out. Ocassionally there are substrates with no variability, its all either closed or its open.
-## This causes problems in calculating the lcp. So in the sim we ensure that there are 
-## some proportions of open/closed areas. This is hacky, and future versions should
-## Produce a more elegant way of simulating landscape. 
-## The v8 of the model function works well. cleaning it up though to simplify. 
+## Iterated Djikstra sim.
+
+##
 
 # install.packages(c("terra", "gdistance"))
 library(terra)
 library(gdistance)
 library(here)
 
-setwd(paste(here::here(),"/Functions",sep="",collapse=""))
+
+setwd(paste(here::here(),"/Simulating_substrates_and_cost/functions",sep="",collapse=""))
+
+
 source("Iterated_djikstra_approach_functions_V3.R")
 #set.seed(42)
 
@@ -27,10 +19,11 @@ n <- 100  # grid size
 mod <- 5 # number of cells to remove from each side
 #cost1<-1
 #cost2<-3
-k<-40   # Simulations per variable combo
-cost_tape1<-c(1)
-cost_tape2<-c(1,2,4,8)
-target_closed_fraction=.8
+k<-20   # Simulations per variable combo
+cost_tape1<-c(1) ## Keep this as a baseline
+cost_tape2<-c(1.5,2,4) ## Vary the cost of second substrate (open)
+target_closed_fraction=c(.6,.7,.8,.9) ## Vary the proportion of first substrate (closed).
+
 closed_cluster_size=5
 resource_cluster_size=5
 metadata<-paste("targ", target_closed_fraction, 
@@ -52,20 +45,21 @@ results <- data.frame(
 #preallocate grid
 param_grid <- expand.grid(cost1 = cost_tape1,
                           cost2 = cost_tape2,
+                          target_closed_fraction=target_closed_fraction,
                           replicate = seq_len(k))
 n_total <- nrow(param_grid)
 param_grid$metadata<-metadata
-
 # Example data frame to store results
 param_grid$total_length <- NA
 param_grid$euclidean <- NA
 param_grid$sinuosity <- NA
 param_grid$total_cost <- NA
+param_grid
 
 for(i in 1:nrow(param_grid)){
     #output <- model_landscape_and_movement_v8(n, mod, param_grid$cost1[i],param_grid$cost2[i])
   output <- model_landscape_and_movement(n, mod, param_grid$cost1[i],param_grid$cost2[i],
-                                            target_closed_fraction=target_closed_fraction, 
+                                            target_closed_fraction=param_grid$target_closed_fraction[i], 
                                             closed_cluster_size = closed_cluster_size,
                                             resource_cluster_size=resource_cluster_size)
     
@@ -82,7 +76,8 @@ for(i in 1:nrow(param_grid)){
     param_grid$sinuosity[i] <- metrics$sinuosity
     param_grid$total_cost[i] <- metrics$total_cost
     
-  }
+}
+here::here()
 param_grid
 i
 plot(output[[2]][[1]])
@@ -93,7 +88,7 @@ file_name<-paste0(format(Sys.time(), "%Y_%m_%d_%H"),metadata,".csv",sep="",colla
 
 write.csv(param_grid,file_name)
 
-
+library(ggplot2)
 #Basic plots. 
 df<-param_grid
 ggplot(df,aes(x=total_length, y=sinuosity))+geom_point() +facet_wrap(~cost2) 
