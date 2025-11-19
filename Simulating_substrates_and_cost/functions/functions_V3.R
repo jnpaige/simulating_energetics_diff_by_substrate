@@ -21,7 +21,6 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
                       xmin = 0, xmax = grid_size,
                       ymin = 0, ymax = grid_size)
   
-  plot(land)
   l1 <- list()
   
   ### 2. Improved substrate raster generation with controlled fraction
@@ -30,16 +29,14 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
   
   # Create clusters
   substrate <- terra::focal(substrate, w = c1_cluster_size, fun = mean, na.rm = TRUE)
-  plot(substrate)
-  
+
   # Normalize
   substrate_min <- terra::global(substrate, "min", na.rm = TRUE)[[1]]
   substrate_max <- terra::global(substrate, "max", na.rm = TRUE)[[1]]
   #normalize the clusters
   
   substrate <- (substrate - substrate_min) / (substrate_max - substrate_min)
-  plot(substrate)
-  
+
   # Pull values to memory safely
   v <- terra::values(substrate)
   v[is.na(v)] <- 0
@@ -56,8 +53,7 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
   terra::values(substrate_binary) <- v_bin
   
   substrate <- substrate_binary
-  plot(substrate)
-  
+
   ### 3. Improved resource raster generation
   resource <- terra::rast(land)
   # Ensure at least one resource
@@ -84,24 +80,21 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
   substrate <- terra::ifel(substrate >= 1, 1, 0)
   substrate[is.na(substrate)] <- 0
   
-  plot(substrate)
+  
   
   # Force raster to materialize in memory
   #substrate <- terra::deepcopy(substrate)
   #substrate <- terra::setValues(substrate, terra::values(substrate))
   
-  plot(substrate)
-  
+
   # If you less than or qual the threshold you get a 1 (this is open area/cost2), otherwise 0 (its closed/cost1)
   # Now safely build travel cost layer
   travel_cost <- substrate
-  plot(travel_cost)
   vals <- terra::values(substrate)
   vals[vals == 1] <- cost1
   vals[vals == 0] <- cost0
   travel_cost <- terra::setValues(travel_cost, vals)
-  plot(travel_cost)
-  
+
   
   ### 5. Crop extent
   crop_ext <- terra::ext(mod, grid_size - mod, mod, grid_size - mod)
@@ -113,7 +106,6 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
   travel_cost_raster <- raster::raster(travel_cost_crop)
   resource_raster <- raster::raster(resource_crop)
   
-  plot(travel_cost_raster)
   l1[[1]] <- travel_cost_raster
   l1[[2]] <- resource_raster
   
@@ -138,8 +130,6 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
   }
   
   cost_surface_terra <- terra::rast(cost_to_resources)
-  plot(cost_to_resources)
-  plot(cost_surface_terra)
   ### 9. Pick start point far from resources
   non_resource_cells <- which(raster::values(resource_raster) == 0)
   if (length(non_resource_cells) == 0) {

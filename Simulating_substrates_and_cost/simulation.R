@@ -19,7 +19,7 @@ n <- 100  # grid size
 mod <- 5 # number of cells to remove from each side
 #cost1<-1
 #cost2<-3
-k<-3   # Simulations per variable combo
+k<-50   # Simulations per variable combo
 cost_tape0<-c(1) ## Keep this as a baseline this is the closed substrate
 cost_tape1<-c(1.5,2.5,3.5,4.5) ## Vary the cost of second substrate (open)
 target_open_fraction=c(.1,.2,.3,.4) ## 
@@ -56,7 +56,7 @@ param_grid$total_length <- NA
 param_grid$euclidean <- NA
 param_grid$sinuosity <- NA
 param_grid$total_cost <- NA
-param_grid
+
 
 for(i in 1:nrow(param_grid)){
     #output <- model_landscape_and_movement_v8(n, mod, param_grid$cost1[i],param_grid$cost2[i])
