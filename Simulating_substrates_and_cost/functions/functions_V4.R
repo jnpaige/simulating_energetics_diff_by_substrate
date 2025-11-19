@@ -45,7 +45,10 @@ model_landscape_and_movement_fast <- function(grid_size, mod, cost0, cost1,
   
   # threshold -> produce binary substrate (1 = open, 0 = closed)
   threshold <- stats::quantile(v, probs = c1_fraction, na.rm = TRUE)
-  v_bin <- ifelse(v >= threshold, 1L, 0L)
+  
+  # FIXED: 1=open should be the *lowest* c1_fraction of terrain,
+  # not the highest, unless you explicitly want high==open.
+  v_bin <- ifelse(v <= threshold, 1L, 0L)
   
   substrate_binary <- substrate
   terra::values(substrate_binary) <- v_bin
@@ -174,3 +177,100 @@ model_landscape_and_movement_fast <- function(grid_size, mod, cost0, cost1,
   cost_surface_terra <- terra::rast(cost_to_resources)  # small conversion once
   return(list(cost_surface_terra, lcp_terra, total_cum_cost, xy_start, xy_nearest_resource))
 }
+
+
+
+
+
+
+prepare_for_plotting<-function(substrate, cost_surface,lcp,resources,xy_start,xy_target){
+  l<-list()
+  # Convert rasters for ggplot
+  df_substrate <- as.data.frame(rast(substrate), xy = TRUE)
+  colnames(df_substrate)[3] <- "substrate"
+  
+  df_cost <- as.data.frame(cost_surface, xy = TRUE)
+  colnames(df_cost)[3] <- "cost"
+  
+  # Convert SpatVector (least-cost path) to sf
+  lcp_sf <- st_as_sf(lcp)
+  
+  # ✅ Convert resources to SpatRaster and then extract points
+  resources_spat <- rast(resources)
+  res_points <- as.points(resources_spat, values = TRUE)
+  res_points <- res_points[res_points$lyr.1 == 1, ]
+  res_sf <- st_as_sf(res_points)
+  
+  # Start/target points as sf
+  start_sf <- st_as_sf(data.frame(x = xy_start[1], y = xy_start[2]), coords = c("x", "y"), crs = crs(resources_spat))
+  target_sf <- st_as_sf(data.frame(x = xy_target[1], y = xy_target[2]), coords = c("x", "y"), crs = crs(resources_spat))
+  
+  l[[1]]<-df_substrate
+  l[[2]]<-lcp_sf
+  l[[3]]<-res_sf
+  l[[4]]<-start_sf
+  l[[5]]<-target_sf
+  l[[6]]<-df_cost
+  return(l)}
+
+
+
+
+
+
+### Work with results:
+
+library(terra)
+
+
+calculate_path_metrics <- function(cost_surface,lcp) {
+  g <- geom(lcp)  # matrix: geom, part, x, y, hole
+  g <- as.data.frame(g)
+  g$x <- as.numeric(g$x)
+  g$y <- as.numeric(g$y)
+  g$part <- as.numeric(g$part)
+  
+  total_length <- 0
+  straight_start_end <- c()
+  parts <- unique(g$part)
+  
+  for (p in parts) {
+    rows <- which(g$part == p)
+    if (length(rows) < 2) next
+    coords <- cbind(g$x[rows], g$y[rows])
+    dx <- diff(coords[,1])
+    dy <- diff(coords[,2])
+    segs <- sqrt(dx^2 + dy^2)
+    total_length <- total_length + sum(segs, na.rm = TRUE)
+    
+    straight_start_end <- rbind(straight_start_end,
+                                c(x1 = coords[1,1], y1 = coords[1,2],
+                                  x2 = coords[nrow(coords),1], y2 = coords[nrow(coords),2]))
+  }
+  
+  # Straight-line distance (start–end)
+  if (nrow(straight_start_end) >= 1) {
+    start <- straight_start_end[1, c("x1", "y1")]
+    last  <- straight_start_end[nrow(straight_start_end), c("x2", "y2")]
+    euclid <- sqrt((last[1] - start[1])^2 + (last[2] - start[2])^2)
+  } else {
+    euclid <- NA_real_
+  }
+  
+  sinuosity <- ifelse(!is.na(euclid) && euclid > 0, total_length / euclid, NA_real_)
+  
+  total_cum_cost<-sum(terra::extract(cost_surface,lcp, touches=TRUE,cells=TRUE,xy=TRUE,method="bilinear")$layer)
+  
+  data.frame(
+    total_length = total_length,
+    euclidean = euclid,
+    sinuosity = sinuosity,
+    total_cost = total_cum_cost
+  )
+}
+
+# Usage:
+#metrics <- calculate_path_metrics(t2[[2]],t2[[3]][2])  # or lcp
+
+
+
