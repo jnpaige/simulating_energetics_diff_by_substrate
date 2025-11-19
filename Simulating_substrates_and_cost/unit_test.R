@@ -3,23 +3,28 @@ library(ggplot2)
 library(sf)
 library(dplyr)
 
-setwd(paste(here::here(),"/Functions",sep="",collapse=""))
-source("Iterated_djikstra_approach_functions_V3.R")
+setwd(paste(here::here(),"/Simulating_substrates_and_cost/functions",sep="",collapse=""))
+source("functions_V3.R")
 #set.seed(42)
 
 ### 1. Create base landscape
 n <- 100  # grid size
 mod <- 5 # number of cells to remove from each side
 cost1<-1
-cost2<-4
+cost2<-2
 
-target_closed_fraction=.2
-closed_cluster_size=5
+c1_fraction=.05
+c1_cluster_size=5
 resource_prob=0.01
-resource_cluster_Size=5
+resource_cluster_size=5
 
-t<-output
-t<-model_landscape_and_movement_v8(n,mod,cost1,cost2, target_closed_fraction,closed_cluster_size )
+t<-model_landscape_and_movement(grid_size= n,
+                                mod=mod,
+                                cost1=cost1,
+                                cost2=cost2,  
+                                c1_fraction=c1_fraction,
+                                c1_cluster_size=c1_cluster_size, 
+                                resource_cluster_size=resource_cluster_size )
 
 # Extract components
 substrate <- t[[1]][[1]]        # raster (may be RasterLayer)
@@ -29,7 +34,6 @@ lcp <- t[[2]][[2]]              # SpatVector
 xy_start <- t[[2]][[4]]
 xy_target <- t[[2]][[5]]
 
-t
 t<-prepare_for_plotting(substrate, cost_surface,lcp,resources,xy_start,xy_target)
 
 ### Now plot data. 
@@ -56,10 +60,7 @@ fig1 <- ggplot() +
   theme(legend.position = "right",
         plot.title = element_text(size = 14, face = "bold"))
 
-
-
-
-
+fig1
 
 fig2 <- ggplot() +
   geom_raster(data = df_cost, aes(x, y, fill = cost)) +
@@ -74,6 +75,7 @@ fig2 <- ggplot() +
         plot.title = element_text(size = 14, face = "bold"))
 
 fig2
+
 fig1
 
 
