@@ -21,8 +21,7 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
                       xmin = 0, xmax = grid_size,
                       ymin = 0, ymax = grid_size)
   
-  l1 <- list()
-  
+
   ### 2. Improved substrate raster generation with controlled fraction
   substrate <- terra::rast(land)
   terra::values(substrate) <- runif(terra::ncell(substrate))
@@ -106,8 +105,6 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
   travel_cost_raster <- raster::raster(travel_cost_crop)
   resource_raster <- raster::raster(resource_crop)
   
-  l1[[1]] <- travel_cost_raster
-  l1[[2]] <- resource_raster
   
   ### 7. Build gdistance transition object
   tr <- gdistance::transition(1 / travel_cost_raster, transitionFunction = mean, directions = 8)
@@ -187,10 +184,8 @@ model_landscape_and_movement <- function(grid_size, mod, cost0, cost1,
                                    terra::vect(matrix(xy_nearest_resource, ncol = 2))) |>
     as.numeric()
   
-  
-  l2 <- list(cost_surface_terra, lcp_terra, total_cum_cost, xy_start, xy_nearest_resource)
-  final_list <- list(l1, l2)
-  return(final_list)
+
+  return(list(cost_surface_terra,lcp_terra, total_cum_cost, xy_start, xy_nearest_resource))
 }
 
 
