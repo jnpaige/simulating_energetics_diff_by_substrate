@@ -80,7 +80,10 @@ if (!use_parallel) {
     if (is.null(out)) next
     
     # calculate metrics
-    metrics <- calculate_path_metrics(out[[1]], out[[2]], substrate_r = out[[6]])
+    metrics <- calculate_path_metrics(out[[1]], out[[2]],
+                                      substrate_r = out[[5]],
+                                      travel_cost_r = out[[6]])
+    
     param_grid$total_length[i] <- metrics$total_length
     param_grid$euclidean[i] <- metrics$euclidean
     param_grid$sinuosity[i] <- metrics$sinuosity
@@ -133,12 +136,13 @@ library(ggridges)
 df<-param_grid
 length(df$cost0)
 
+
 df <- df[df$total_length > 0, ]
 df <- df[which(df$total_cost>0),]
 df$rat <- df$total_cost / df$total_length
 
 
-ggplot(df, aes(x=sinuosity, y=total_length))+geom_point()+facet_wrap(~c1_fraction)
+ggplot(df, aes(x=sinuosity, y=cells_open))+geom_point()+facet_wrap(~c1_fraction)
 ggplot(df, aes(x=total_cost, y=total_length))+geom_point()+facet_wrap(~c1_fraction)
 ggplot(df, aes(x=total_cost, y=total_length))+geom_point()+facet_wrap(~cost1)
 
@@ -187,5 +191,6 @@ ggplot(df, aes(x = sinuosity, y = as.factor(c1_fraction), fill = as.factor(c1_fr
   facet_wrap(~ cost1) +
   theme_ridges() +
   theme(legend.position = "none")
+
 
 

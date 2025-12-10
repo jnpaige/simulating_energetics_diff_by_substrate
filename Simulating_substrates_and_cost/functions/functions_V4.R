@@ -155,6 +155,7 @@ model_landscape_and_movement_fast <- function(grid_size, mod, cost0, cost1,
   })
   if (is.null(lcp)) return(NULL)
   
+  
   # Convert SpatialLines to terra vect for compatibility with your downstream code
   # shortestPath returns SpatialLines; convert via sf then to terra vect
   lcp_sf <- sf::st_as_sfc(sf::st_as_text(sf::st_as_sfc(lcp)))
@@ -162,6 +163,7 @@ model_landscape_and_movement_fast <- function(grid_size, mod, cost0, cost1,
   lcp_sp <- lcp
   lcp_sf <- sf::st_as_sf(lcp_sp)
   lcp_terra <- terra::vect(lcp_sp)
+
   
   # ---------- 11. Total cumulative cost along path (vectorized) ----------
   # extract coordinates of lcp vertices
@@ -170,13 +172,20 @@ model_landscape_and_movement_fast <- function(grid_size, mod, cost0, cost1,
   }))
   # convert to SpatialPoints (raster::extract will take coords)
   pts <- sp::SpatialPoints(coords = geom_mat, proj4string = raster::crs(travel_cost_r))
-  values_on_path <- raster::extract(cost_to_resources, pts)
-  total_cum_cost <- sum(values_on_path, na.rm = TRUE)
+  cost_vals_path <- raster::extract(travel_cost_r, pts)
+  total_cum_cost <- sum(cost_vals_path, na.rm = TRUE)
+  
   
   # Return objects in familiar structure
-  cost_surface_terra <- terra::rast(cost_to_resources)  # small conversion once
-  return(list(cost_surface_terra, lcp_terra, total_cum_cost, xy_start,
-              xy_nearest_resource, substrate_r))
+  cost_surface_terra <- cost_to_resources
+  return(list(cost_surface_terra,    # 1 SpatRaster ✓
+              lcp_terra,            # 2 SpatVector ✓
+              xy_start,             # 3
+              xy_nearest_resource,  # 4
+              substrate_r,          # 5 RasterLayer but converted later
+              travel_cost_r))       # 6 RasterLayer but converted later
+  
+  
 }
 
 
@@ -224,7 +233,10 @@ prepare_for_plotting<-function(substrate, cost_surface,lcp,resources,xy_start,xy
 library(terra)
 
 
-calculate_path_metrics <- function(cost_surface, lcp, substrate_r) {
+calculate_path_metrics <- function(cost_surface,
+                                   lcp,
+                                   substrate_r,
+                                   travel_cost_r) {
   g <- geom(lcp)  # matrix: geom, part, x, y, hole
   g <- as.data.frame(g)
   g$x <- as.numeric(g$x)
@@ -244,12 +256,15 @@ calculate_path_metrics <- function(cost_surface, lcp, substrate_r) {
     segs <- sqrt(dx^2 + dy^2)
     total_length <- total_length + sum(segs, na.rm = TRUE)
     
-    straight_start_end <- rbind(straight_start_end,
-                                c(x1 = coords[1,1], y1 = coords[1,2],
-                                  x2 = coords[nrow(coords),1], y2 = coords[nrow(coords),2]))
+    straight_start_end <- rbind(
+      straight_start_end,
+      c(
+        x1 = coords[1, 1], y1 = coords[1, 2],
+        x2 = coords[nrow(coords), 1], y2 = coords[nrow(coords), 2]
+      )
+    )
   }
   
-  # Straight-line distance (start–end)
   if (nrow(straight_start_end) >= 1) {
     start <- straight_start_end[1, c("x1", "y1")]
     last  <- straight_start_end[nrow(straight_start_end), c("x2", "y2")]
@@ -260,25 +275,32 @@ calculate_path_metrics <- function(cost_surface, lcp, substrate_r) {
   
   sinuosity <- ifelse(!is.na(euclid) && euclid > 0, total_length / euclid, NA_real_)
   
-  total_cum_cost<-sum(terra::extract(cost_surface,lcp, touches=TRUE,cells=TRUE,xy=TRUE,method="bilinear")$layer)
+  # Total cost along the path from the cost surface (SpatRaster)
+
+  cost_spat <- terra::rast(cost_surface)
+  cost_df <- terra::extract(cost_spat, lcp, touches = TRUE)
+  cost_vals <- cost_df[[2]]
+  total_cum_cost <- sum(cost_vals, na.rm = TRUE)
   
-  # ---- Substrate use along the path ----
-  # Extract substrate use on the path cells
-  sub_vals <- raster::extract(substrate_r, pts)
   
-  cells_open <- sum(sub_vals == 1, na.rm = TRUE)
+  # Substrate use along the path
+  substrate_spat <- terra::rast(substrate_r)  # convert RasterLayer -> SpatRaster
+  sub_df <- terra::extract(substrate_spat, lcp, touches = TRUE, cells = FALSE, xy = FALSE)
+  sub_vals <- sub_df[[2]]
+  
+  cells_open   <- sum(sub_vals == 1, na.rm = TRUE)
   cells_closed <- sum(sub_vals == 0, na.rm = TRUE)
-  
   
   data.frame(
     total_length = total_length,
-    euclidean = euclid,
-    sinuosity = sinuosity,
-    total_cost = total_cum_cost,
-    cells_open = cells_open,
+    euclidean    = euclid,
+    sinuosity    = sinuosity,
+    total_cost   = total_cum_cost,
+    cells_open   = cells_open,
     cells_closed = cells_closed
   )
 }
+
 
 
 
