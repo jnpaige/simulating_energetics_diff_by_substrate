@@ -2,14 +2,30 @@ library(here)
 library(brms)
 library(cmdstanr)
 library(ggplot2)
+library(ggridges)
 setwd(paste(here::here(),"/Model_effect_size/data", sep="",collapse=""))
 
-df<-read.csv("2025_11_18_11targ0.6_cl_size5_r_size5targ0.7_cl_size5_r_size5targ0.8_cl_size5_r_size5targ0.9_cl_size5_r_size5.csv")
+df<-read.csv("2025_11_19_153724_targ0.1-0.2-0.3-0.4_cl_size5_r_size5.csv")
 head(df)
 df$rat<-df$total_cost/df$total_length
 
-ggplot(df, aes(x=total_cost/total_length, group=cost2,fill=cost2))+geom_density(alpha=.2)
-ggplot(df, aes(x=sinuosity, group=cost2,fill=cost2))+geom_density(alpha=.2)
+ggplot(df, aes(x=rat, group=cost1,fill=cost1))+geom_density(alpha=.2)+facet_wrap(~c1_fraction)
+ggplot(df, aes(x=sinuosity, group=cost1,fill=cost1))+geom_density(alpha=.2)
+
+
+ggplot(df, aes(x=rat,y=as.factor(c1_fraction),fill=as.factor(c1_fraction)))+geom_density_ridges()+
+  facet_wrap(~cost1)
+
+ggplot(df, aes(x=total_cost,y=as.factor(c1_fraction),fill=as.factor(c1_fraction)))+geom_density_ridges()+
+  facet_wrap(~cost1)
+
+ggplot(df, aes(x=sinuosity,y=as.factor(c1_fraction),fill=as.factor(c1_fraction)))+geom_density_ridges()+
+  facet_wrap(~cost1)
+
+
+
+
+
 
 d<-rgamma(10000, 3,.01)
 hist(d)
@@ -18,7 +34,7 @@ hist(d)
 names(df)
 #A gamma distribution is most appropriate. 
 m <- brm(
-  formula = rat ~ cost2 * target_closed_fraction + (1 + cost2 | replicate),
+  formula = rat ~ cost1 * c1_fraction + (1 + cost1 | replicate),
   data = df,
   family = Gamma(link=log),
   cores = 4,

@@ -175,8 +175,7 @@ model_landscape_and_movement_fast <- function(grid_size, mod, cost0, cost1,
   
   # Return objects in familiar structure
   cost_surface_terra <- terra::rast(cost_to_resources)  # small conversion once
-  return(list(cost_surface_terra, lcp_terra, total_cum_cost, xy_start,
-              xy_nearest_resource, substrate_r))
+  return(list(cost_surface_terra, lcp_terra, total_cum_cost, xy_start, xy_nearest_resource))
 }
 
 
@@ -224,7 +223,7 @@ prepare_for_plotting<-function(substrate, cost_surface,lcp,resources,xy_start,xy
 library(terra)
 
 
-calculate_path_metrics <- function(cost_surface, lcp, substrate_r) {
+calculate_path_metrics <- function(cost_surface,lcp) {
   g <- geom(lcp)  # matrix: geom, part, x, y, hole
   g <- as.data.frame(g)
   g$x <- as.numeric(g$x)
@@ -262,25 +261,13 @@ calculate_path_metrics <- function(cost_surface, lcp, substrate_r) {
   
   total_cum_cost<-sum(terra::extract(cost_surface,lcp, touches=TRUE,cells=TRUE,xy=TRUE,method="bilinear")$layer)
   
-  # ---- Substrate use along the path ----
-  # Extract substrate use on the path cells
-  sub_vals <- raster::extract(substrate_r, pts)
-  
-  cells_open <- sum(sub_vals == 1, na.rm = TRUE)
-  cells_closed <- sum(sub_vals == 0, na.rm = TRUE)
-  
-  
   data.frame(
     total_length = total_length,
     euclidean = euclid,
     sinuosity = sinuosity,
-    total_cost = total_cum_cost,
-    cells_open = cells_open,
-    cells_closed = cells_closed
+    total_cost = total_cum_cost
   )
 }
-
-
 
 # Usage:
 #metrics <- calculate_path_metrics(t2[[2]],t2[[3]][2])  # or lcp
