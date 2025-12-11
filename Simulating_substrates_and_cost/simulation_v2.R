@@ -171,7 +171,7 @@ ggplot(df, aes(x = rat, y = as.factor(cost1), fill = as.factor(cost1))) +
   ) +
   facet_wrap(~ c1_fraction) +
   theme_ridges() +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +ggtitle()
 
 
 
