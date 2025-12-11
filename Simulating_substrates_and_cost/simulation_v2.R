@@ -139,7 +139,7 @@ length(df$cost0)
 
 df <- df[df$total_length > 0, ]
 df <- df[which(df$total_cost>0),]
-df$rat <- df$total_cost / df$total_length
+df$rat <- df$total_cost / df$euclidean
 
 
 ggplot(df, aes(x=sinuosity, y=cells_open))+geom_point()+facet_wrap(~c1_fraction)
@@ -156,6 +156,8 @@ ggplot(df, aes(x=rat,y=as.factor(cost1),fill=as.factor(cost1)))+geom_density_rid
 
 ggplot(df, aes(x=sinuosity,y=as.factor(c1_fraction),fill=as.factor(c1_fraction)))+geom_density_ridges()+
   facet_wrap(~cost1)
+
+
 
 library(dplyr)
 med1 <- df %>%

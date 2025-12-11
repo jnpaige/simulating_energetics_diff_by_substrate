@@ -6,16 +6,17 @@ library(here)
 library(doParallel)    # optional for parallel runs
 library(foreach)
 
+
 # Source the fast functions file
-source("functions_V4.R") 
+source('/Users/jpaige/Desktop/Research repositories/simulating_energetics_diff_by_substrate/Simulating_substrates_and_cost/functions/functions_V4.R') 
 
 # ----------- parameters -------------
 n <- 100
 mod <- 5
-k <- 50
+k <- 100
 cost_tape0 <- c(1)
-cost_tape1 <- c(1.5, 2.5, 3.5, 4.5)
-c1_fraction <- c(.1, .2, .3, .4)  # earlier you used 'c1_fraction' naming
+cost_tape1 <- c(1, 1.5, 2, 2.5,3,3.5,4,4.5,5,5.5,6)
+c1_fraction <- c(.1, .2, .3, .4,.5,.6,.7,.8,.9)  # earlier you used 'c1_fraction' naming
 c1_cluster_size <- 5
 resource_cluster_size <- 5
 
@@ -35,6 +36,9 @@ param_grid$total_length <- NA_real_
 param_grid$euclidean <- NA_real_
 param_grid$sinuosity <- NA_real_
 param_grid$total_cost <- NA_real_
+param_grid$cells_open <- NA_real_
+param_grid$cells_closed <- NA_real_
+
 
 # ----------- precompute the raster_template for the CROPPED domain -------------
 # cropped domain dimensions
@@ -76,11 +80,17 @@ if (!use_parallel) {
     if (is.null(out)) next
     
     # calculate metrics
-    metrics <- calculate_path_metrics(out[[1]], out[[2]])
+    metrics <- calculate_path_metrics(out[[1]], out[[2]],
+                                      substrate_r = out[[5]],
+                                      travel_cost_r = out[[6]])
+    
     param_grid$total_length[i] <- metrics$total_length
     param_grid$euclidean[i] <- metrics$euclidean
     param_grid$sinuosity[i] <- metrics$sinuosity
     param_grid$total_cost[i] <- metrics$total_cost
+    param_grid$cells_open[i] <- metrics$cells_open
+    param_grid$cells_closed[i] <- metrics$cells_closed
+    
   }
 } else {
   # parallel version (returns list rows -> combine back)
@@ -94,7 +104,7 @@ if (!use_parallel) {
                                              resource_cluster_size = resource_cluster_size,
                                              raster_template = r_template)
     if (is.null(out)) return(NULL)
-    metrics <- calculate_path_metrics(out[[1]], out[[2]])
+    metrics <- calculate_path_metrics(out[[1]], out[[2]], substrate_r = out[[3]])
     data.frame(total_length = metrics$total_length,
                euclidean = metrics$euclidean,
                sinuosity = metrics$sinuosity,
@@ -126,12 +136,13 @@ library(ggridges)
 df<-param_grid
 length(df$cost0)
 
+
 df <- df[df$total_length > 0, ]
 df <- df[which(df$total_cost>0),]
 df$rat <- df$total_cost / df$total_length
 
 
-ggplot(df, aes(x=sinuosity, y=total_length))+geom_point()+facet_wrap(~c1_fraction)
+ggplot(df, aes(x=sinuosity, y=cells_open))+geom_point()+facet_wrap(~c1_fraction)
 ggplot(df, aes(x=total_cost, y=total_length))+geom_point()+facet_wrap(~c1_fraction)
 ggplot(df, aes(x=total_cost, y=total_length))+geom_point()+facet_wrap(~cost1)
 
@@ -160,7 +171,7 @@ ggplot(df, aes(x = rat, y = as.factor(cost1), fill = as.factor(cost1))) +
   ) +
   facet_wrap(~ c1_fraction) +
   theme_ridges() +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +ggtitle()
 
 
 
@@ -180,5 +191,6 @@ ggplot(df, aes(x = sinuosity, y = as.factor(c1_fraction), fill = as.factor(c1_fr
   facet_wrap(~ cost1) +
   theme_ridges() +
   theme(legend.position = "none")
+
 
 
