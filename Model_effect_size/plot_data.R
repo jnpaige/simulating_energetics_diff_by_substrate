@@ -50,21 +50,27 @@ ggplot(df, aes(x = rat, y = as.factor(cost1), fill = as.factor(cost1))) +
 
 #Ridge plots. Summarizing model outputs
 
-p<-ggplot(df, aes(x=rat,y=as.factor(cost1),fill=as.factor(cost1)))+geom_density_ridges()+
-  facet_wrap(~c1_fraction) +theme_bw() +ggtitle("Cost/distance distribution in each condition")
-
-p<-ggplot(df, aes(x=sinuosity,y=as.factor(cost1),fill=as.factor(cost1)))+geom_density_ridges()+
-  facet_wrap(~c1_fraction) + theme_bw() + ggtitle("Cost/distance distribution in each condition")
-
 
 p<-ggplot(df, aes(y=sinuosity, x=cost1))+facet_wrap(~c1_fraction) +geom_point(alpha=.04) +theme_bw() +
   labs(x = "Open substrate cost", y = "Sinuosity",
      title = "Sinuosity as a function of open substrate \n cost across open substrate proportion conditions") 
 
 p
+ggsave("open_cost_on_sinuosity_sim_output.png", dpi=600)
+
 p<-ggplot(df, aes(y=rat, x=cost1))+facet_wrap(~c1_fraction) +geom_point(alpha=.04) +theme_bw() +
   labs(x = "Open substrate cost", y = "Cost/Euclidean Distance",
        title = "Cost/euclidian distance as a function of open substrate \n cost across open substrate proportion conditions") 
 p
+ggsave("open_cost_on_ratio_sim_output.png", dpi=600)
 
+
+p<-ggplot(df, aes(x=cells_open, y=rat))+geom_point(alpha=.3)+
+  facet_wrap(~c1_fraction) +theme_bw()
+
+p
+
+p<-ggplot(df, aes(x=cells_open, y=rat))+geom_point(alpha=.3)+
+  facet_wrap(~c1_fraction) +theme_bw()
+p
 

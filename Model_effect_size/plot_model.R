@@ -42,7 +42,11 @@ p<-plot(ce_rat, points = FALSE)[[1]] +
     y = "Predicted cost/euclidean distance (Gamma mean)"
   )
 
-p+theme_bw()
+
+p<-p+theme_bw()
+p
+ggsave("pop_effect_substrate_rat.png",p,dpi=600)
+
 
 p<-plot(ce_sin, points = FALSE)[[1]] +
   labs(
@@ -50,7 +54,10 @@ p<-plot(ce_sin, points = FALSE)[[1]] +
     x = "relative cost of open substrate",
     y = "Predicted sinuosity (Gamma mean)"
   )
-p+theme_bw()
+
+p<-p+theme_bw()
+p
+ggsave("pop_effect_substrate_sinu.png",p,dpi=600)
 
 
 
@@ -122,7 +129,7 @@ sin_long <- sin_pred %>%
 
 plot_dat <- bind_rows(rat_long, sin_long)
 
-ggplot(
+p<-ggplot(
   plot_dat,
   aes(
     x    = cost1,
@@ -145,7 +152,9 @@ ggplot(
   ) +
   theme_bw()
 
+p
 
+ggsave("cond_effect_open_area.png",p,dpi=600)
 
 
 
