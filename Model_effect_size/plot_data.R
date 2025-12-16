@@ -4,12 +4,14 @@ library(here)
 library(ggridges)
 
 setwd(file.path(here::here(),"Model_effect_size/data"))
-df <- read.csv("2025_12_02_121620_targ0.1-0.2-0.3-0.4-0.5-0.6-0.7-0.8-0.9_cl_size5_r_size5.csv")
+df <- read.csv("2025_12_10_113234_targ0.1-0.2-0.3-0.4-0.5-0.6-0.7-0.8-0.9_cl_size5_r_size5.csv")
 
 df <- df[df$total_length > 0, ]
 df <- df[which(df$total_cost>0),]
 df$rat <- df$total_cost / df$euclidean
 
+
+### RAT is cost per straight line distance.
 
 library(dplyr)
 
@@ -29,6 +31,7 @@ ggplot(median_table, aes(x=median_rat,y=median_total_cost,col=cost1))+
   geom_smooth(method="lm")
 
 median_table
+
 library(ggplot2)
 library(ggridges)
 
@@ -38,31 +41,30 @@ ggplot(df, aes(x = rat, y = as.factor(cost1), fill = as.factor(cost1))) +
              aes(xintercept = median_rat, color = as.factor(cost1)),
              linetype = "dashed", size = 0.6, show.legend = FALSE) +
   facet_wrap(~c1_fraction) +
-  labs(x = "Cost / Length (rat)", y = "Cost1",
+  labs(x = "Cost / sinuosity", y = "Cost1",
        fill = "Cost1", color = "Cost1",
        title = "Density of rat values by cost1 with median reference lines") +
   theme_minimal()
 
 
 
+#Ridge plots. Summarizing model outputs
+
+p<-ggplot(df, aes(x=rat,y=as.factor(cost1),fill=as.factor(cost1)))+geom_density_ridges()+
+  facet_wrap(~c1_fraction) +theme_bw() +ggtitle("Cost/distance distribution in each condition")
+
+p<-ggplot(df, aes(x=sinuosity,y=as.factor(cost1),fill=as.factor(cost1)))+geom_density_ridges()+
+  facet_wrap(~c1_fraction) + theme_bw() + ggtitle("Cost/distance distribution in each condition")
 
 
+p<-ggplot(df, aes(y=sinuosity, x=cost1))+facet_wrap(~c1_fraction) +geom_point(alpha=.04) +theme_bw() +
+  labs(x = "Open substrate cost", y = "Sinuosity",
+     title = "Sinuosity as a function of open substrate \n cost across open substrate proportion conditions") 
 
-
-#Effects seem counterintuitive
-
-
-ggplot(df, aes(x=rat,y=as.factor(cost1),fill=as.factor(cost1)))+geom_density_ridges()+
-  facet_wrap(~c1_fraction)
-
-
-ggplot(df, aes(x=total_cost,y=as.factor(cost1),fill=as.factor(cost1)))+geom_density_ridges()+
-  facet_wrap(~c1_fraction)
-
-ggplot(df, aes(x=sinuosity,y=as.factor(cost1),fill=as.factor(cost1)))+geom_density_ridges()+
-  facet_wrap(~c1_fraction)
-
-
-
+p
+p<-ggplot(df, aes(y=rat, x=cost1))+facet_wrap(~c1_fraction) +geom_point(alpha=.04) +theme_bw() +
+  labs(x = "Open substrate cost", y = "Cost/Euclidean Distance",
+       title = "Cost/euclidian distance as a function of open substrate \n cost across open substrate proportion conditions") 
+p
 
 

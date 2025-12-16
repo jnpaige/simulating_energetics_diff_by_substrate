@@ -35,21 +35,26 @@ ce_sin <- conditional_effects(
 )
 
 # These are already ggplot objects in a list of length 1
-plot(ce_rat, points = FALSE)[[1]] +
+p<-plot(ce_rat, points = FALSE)[[1]] +
   labs(
-    title = "Population-level effect of cost1 on rat",
-    x = "cost1 (relative cost of open substrate)",
-    y = "Predicted rat (Gamma mean)"
+    title = "Population-level effect of open substrate cost on cost/euclidean distance",
+    x = "relative cost of open substrate",
+    y = "Predicted cost/euclidean distance (Gamma mean)"
   )
 
-plot(ce_sin, points = FALSE)[[1]] +
+p+theme_bw()
+
+p<-plot(ce_sin, points = FALSE)[[1]] +
   labs(
-    title = "Population-level effect of cost1 on sinuosity",
-    x = "cost1 (relative cost of open substrate)",
+    title = "Population-level effect of open substrate cost on sinuosity",
+    x = "relative cost of open substrate",
     y = "Predicted sinuosity (Gamma mean)"
   )
+p+theme_bw()
 
 
+
+### Focus on subset of open area costs at three levels of open area 
 
 cost_seq    <- seq(min(df$cost1), max(df$cost1), length.out = 100)
 open_levels <- c(0.1, 0.4, 0.7)   # 10%, 40%, 70% open area
@@ -132,11 +137,11 @@ ggplot(
   geom_line() +
   facet_wrap(~ response, scales = "free_y") +
   labs(
-    x        = "cost1 (relative cost of open substrate)",
+    x        = "Relative cost of open substrate",
     y        = "Posterior mean (Gamma scale)",
-    colour   = "Open area (c1_fraction)",
-    fill     = "Open area (c1_fraction)",
-    title    = "Effect of cost1 on rat and sinuosity\nat 10%, 40%, 70% open area"
+    colour   = "Open area fraction",
+    fill     = "Open area fraction",
+    title    = "Effect of relative cost of open substrate \n on transport cost/euclidean distance and sinuosity\nat 10%, 40%, 70% open area"
   ) +
   theme_bw()
 
