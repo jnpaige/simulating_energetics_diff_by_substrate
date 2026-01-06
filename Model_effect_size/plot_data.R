@@ -30,12 +30,11 @@ ggplot(median_table, aes(x=median_rat,y=median_total_cost,col=cost1))+
   #facet_wrap(~cost1)+
   geom_smooth(method="lm")
 
-median_table
 
 library(ggplot2)
 library(ggridges)
 
-ggplot(df, aes(x = rat, y = as.factor(cost1), fill = as.factor(cost1))) +
+p<-ggplot(df, aes(x = rat, y = as.factor(cost1), fill = as.factor(cost1))) +
   geom_density_ridges(alpha = 0.7) +
   geom_vline(data = median_table,
              aes(xintercept = median_rat, color = as.factor(cost1)),
@@ -45,8 +44,8 @@ ggplot(df, aes(x = rat, y = as.factor(cost1), fill = as.factor(cost1))) +
        fill = "Cost1", color = "Cost1",
        title = "Density of rat values by cost1 with median reference lines") +
   theme_minimal()
-
-
+p
+ggsave("density of ratio by cost.png", p,  dpi=600, width=10, height=6)
 
 #Ridge plots. Summarizing model outputs
 
