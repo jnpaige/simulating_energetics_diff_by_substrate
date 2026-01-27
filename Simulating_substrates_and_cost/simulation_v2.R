@@ -195,4 +195,3 @@ ggplot(df, aes(x = sinuosity, y = as.factor(c1_fraction), fill = as.factor(c1_fr
   theme(legend.position = "none")
 
 
-

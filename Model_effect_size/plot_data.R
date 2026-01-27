@@ -10,6 +10,7 @@ df <- df[df$total_length > 0, ]
 df <- df[which(df$total_cost>0),]
 df$rat <- df$total_cost / df$euclidean
 
+length(df$cost0)
 
 ### RAT is cost per straight line distance.
 
