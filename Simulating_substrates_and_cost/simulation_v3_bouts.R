@@ -31,6 +31,8 @@ library(gdistance)
 library(sf)
 library(sp)
 library(dplyr)
+library(doParallel)
+library(foreach)
 
 # =============================================================================
 # 1. BOUT DISTANCE DISTRIBUTION
@@ -60,7 +62,7 @@ sample_bout_distance <- function(n = 1) {
 # =============================================================================
 
 generate_landscape <- function(grid_size = 600,
-                               cell_size = 10,
+                               cell_size = 5,
                                buffer_cells = 50,
                                cost0 = 1,
                                cost1 = 1,
@@ -115,8 +117,8 @@ generate_landscape <- function(grid_size = 600,
   # Convert to raster::RasterLayer for gdistance
   interior_size <- grid_size - 2 * buffer_cells
   r_template <- raster::raster(nrows = interior_size, ncols = interior_size,
-                                xmn = buf_m, xmx = extent_m - buf_m,
-                                ymn = buf_m, ymx = extent_m - buf_m)
+                               xmn = buf_m, xmx = extent_m - buf_m,
+                               ymn = buf_m, ymx = extent_m - buf_m)
   
   travel_cost_r <- raster::setValues(r_template, terra::values(travel_cost_crop))
   substrate_r   <- raster::setValues(r_template, terra::values(substrate_crop))
@@ -172,7 +174,7 @@ extract_bout_metrics <- function(path_coords, landscape) {
   
   # Euclidean: first to last point
   euclid <- sqrt((path_coords[n_pts, 1] - path_coords[1, 1])^2 +
-                 (path_coords[n_pts, 2] - path_coords[1, 2])^2)
+                   (path_coords[n_pts, 2] - path_coords[1, 2])^2)
   
   sinuosity <- if (euclid > 0) lcp_length / euclid else NA_real_
   
@@ -348,8 +350,25 @@ simulate_bouts_on_landscape <- function(landscape, n_bouts = 1000,
 
 
 # =============================================================================
-# 6. MAIN SIMULATION LOOP
+# 6. MAIN SIMULATION LOOP (PARALLEL)
 # =============================================================================
+#
+# Each landscape is fully independent, so we parallelize across landscapes.
+# The transition matrix (~100MB per landscape) lives in each worker's memory.
+# With 8 cores, expect ~8x speedup → ~20-40 min instead of 2.5-5 hours.
+#
+# Memory estimate: each worker holds one landscape at a time.
+#   - 600x600 transition matrix (sparse): ~100-200 MB
+#   - Substrate/cost matrices: ~3 MB
+#   - Bout results: ~5 MB
+#   Total per worker: ~200-300 MB
+#   With 8 workers: ~2 GB (fine for most machines with 16+ GB RAM)
+#
+# If memory is tight, reduce n_cores below.
+# =============================================================================
+
+library(doParallel)
+library(foreach)
 
 # --- Parameters ---
 grid_size      <- 600       # 600 cells × 5m = 3km
@@ -370,6 +389,11 @@ c1_fraction_values <- c(0.1, 0.3, 0.5, 0.7, 0.9)
 # cost1_values <- c(1, 2, 4)
 # c1_fraction_values <- c(0.3, 0.7)
 
+# --- Parallel setup ---
+# Set to FALSE to run sequentially (useful for debugging)
+use_parallel <- TRUE
+n_cores      <- max(1, parallel::detectCores() - 1)  # leave 1 core free
+
 param_grid <- expand.grid(
   cost1       = cost1_values,
   c1_fraction = c1_fraction_values,
@@ -388,22 +412,20 @@ message(sprintf("Conditions: %d cost x %d fraction x %d reps = %d landscapes",
                 length(cost1_values), length(c1_fraction_values),
                 k_replicates, nrow(param_grid)))
 message(sprintf("Bouts per landscape: %d", n_bouts))
-message(sprintf("Total bouts: %d\n", nrow(param_grid) * n_bouts))
+message(sprintf("Total bouts: %d", nrow(param_grid) * n_bouts))
+message(sprintf("Parallel: %s (%d cores)\n",
+                ifelse(use_parallel, "YES", "NO"), n_cores))
 
-all_results <- vector("list", nrow(param_grid))
-t_start_all <- proc.time()
-
-for (i in seq_len(nrow(param_grid))) {
+# --- Worker function: one complete landscape + all its bouts ---
+# This is what each core runs independently.
+run_one_landscape <- function(i, param_grid, grid_size, cell_size,
+                              buffer_cells, cost0, cluster_size_m, n_bouts) {
   
   c1_cost <- param_grid$cost1[i]
   c1_frac <- param_grid$c1_fraction[i]
   rep_id  <- param_grid$replicate[i]
   
-  message(sprintf("\n--- [%d/%d] cost1=%.2f | open_frac=%.1f | rep=%d ---",
-                  i, nrow(param_grid), c1_cost, c1_frac, rep_id))
-  
-  # Generate landscape
-  t0 <- proc.time()
+  # Generate landscape + transition layer
   landscape <- tryCatch(
     generate_landscape(
       grid_size      = grid_size,
@@ -414,27 +436,89 @@ for (i in seq_len(nrow(param_grid))) {
       c1_fraction    = c1_frac,
       cluster_size_m = cluster_size_m
     ),
-    error = function(e) {
-      warning(sprintf("Landscape failed: %s", e$message))
-      NULL
-    }
+    error = function(e) NULL
   )
-  if (is.null(landscape)) next
-  t1 <- proc.time()
-  message(sprintf("  Landscape + transition: %.1f sec", (t1 - t0)[3]))
+  if (is.null(landscape)) return(NULL)
   
-  # Simulate bouts
-  bout_df <- simulate_bouts_on_landscape(landscape, n_bouts = n_bouts)
-  t2 <- proc.time()
-  message(sprintf("  %d bouts: %.1f sec (%.3f sec/bout)",
-                  n_bouts, (t2 - t1)[3], (t2 - t1)[3] / n_bouts))
+  # Simulate bouts (verbose = FALSE in parallel to avoid garbled output)
+  bout_df <- simulate_bouts_on_landscape(landscape, n_bouts = n_bouts,
+                                         verbose = FALSE)
   
   if (!is.null(bout_df) && nrow(bout_df) > 0) {
     bout_df$cost0       <- cost0
     bout_df$cost1       <- c1_cost
     bout_df$c1_fraction <- c1_frac
     bout_df$replicate   <- rep_id
-    all_results[[i]]    <- bout_df
+    bout_df$landscape_id <- i
+  }
+  
+  return(bout_df)
+}
+
+t_start_all <- proc.time()
+
+if (use_parallel) {
+  
+  cl <- parallel::makeCluster(n_cores)
+  doParallel::registerDoParallel(cl)
+  
+  # Export all functions and globals to workers
+  parallel::clusterExport(cl, c(
+    "generate_landscape",
+    "simulate_bouts_on_landscape",
+    "simulate_one_bout",
+    "extract_bout_metrics",
+    "sample_bout_distance",
+    "run_one_landscape",
+    "BOUT_DIST_SHAPE",
+    "BOUT_DIST_RATE"
+  ))
+  
+  # Run in parallel with progress tracking via .verbose
+  all_results <- foreach(
+    i = seq_len(nrow(param_grid)),
+    .packages = c("terra", "raster", "gdistance", "sp"),
+    .errorhandling = "pass",     # don't kill everything if one landscape fails
+    .verbose = FALSE
+  ) %dopar% {
+    run_one_landscape(i, param_grid, grid_size, cell_size,
+                      buffer_cells, cost0, cluster_size_m, n_bouts)
+  }
+  
+  parallel::stopCluster(cl)
+  
+  # Check for errors
+  errors <- sapply(all_results, function(x) inherits(x, "error") || inherits(x, "simpleError"))
+  if (any(errors)) {
+    message(sprintf("WARNING: %d/%d landscapes had errors:", sum(errors), length(errors)))
+    for (j in which(errors)) {
+      message(sprintf("  [%d] cost1=%.2f, frac=%.1f, rep=%d: %s",
+                      j, param_grid$cost1[j], param_grid$c1_fraction[j],
+                      param_grid$replicate[j],
+                      conditionMessage(all_results[[j]])))
+    }
+    all_results[errors] <- list(NULL)
+  }
+  
+} else {
+  # Sequential fallback (for debugging)
+  all_results <- vector("list", nrow(param_grid))
+  
+  for (i in seq_len(nrow(param_grid))) {
+    message(sprintf("[%d/%d] cost1=%.2f | frac=%.1f | rep=%d",
+                    i, nrow(param_grid),
+                    param_grid$cost1[i], param_grid$c1_fraction[i],
+                    param_grid$replicate[i]))
+    
+    t0 <- proc.time()
+    all_results[[i]] <- run_one_landscape(
+      i, param_grid, grid_size, cell_size,
+      buffer_cells, cost0, cluster_size_m, n_bouts
+    )
+    t1 <- proc.time()
+    
+    nr <- if (!is.null(all_results[[i]])) nrow(all_results[[i]]) else 0
+    message(sprintf("  %d bouts in %.1f sec", nr, (t1 - t0)[3]))
   }
 }
 
