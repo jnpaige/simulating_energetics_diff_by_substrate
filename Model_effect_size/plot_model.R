@@ -42,21 +42,32 @@ p<-plot(ce_rat, points = FALSE)[[1]] +
     y = "Predicted cost/euclidean distance (Gamma mean)"
   )
 
-
+p
 p<-p+theme_bw()
 p
 ggsave("pop_effect_substrate_rat.png",p,dpi=600)
 
 
-p<-plot(ce_sin, points = FALSE)[[1]] +
+p <- plot(ce_sin, points = FALSE)[[1]] +
   labs(
     title = "Population-level effect of open substrate cost on sinuosity",
     x = "relative cost of open substrate",
     y = "Predicted sinuosity (Gamma mean)"
-  )
+  ) +
+  theme_bw() +
+  # shaded x-ranges
+  annotate("rect",
+           xmin = 1, xmax = 7,
+           ymin = 1, ymax = 1.59,
+           alpha = 0.15, fill = "blue") +
+  annotate("rect",
+           xmin = 1, xmax = 7,
+           ymin = 1, ymax = 3.85,
+           alpha = 0.15, fill = "red")
 
-p<-p+theme_bw()
 p
+
+
 ggsave("pop_effect_substrate_sinu.png",p,dpi=600)
 
 
