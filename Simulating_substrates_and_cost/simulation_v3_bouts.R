@@ -49,8 +49,9 @@ library(foreach)
 #   bout_distance_rate  <- fit$estimate["rate"]
 
 BOUT_DIST_SHAPE <- 1.2
-BOUT_DIST_RATE  <- 0.015
+BOUT_DIST_RATE  <- 0.010
 
+hist(rgamma(1000, shape=BOUT_DIST_SHAPE, rate=BOUT_DIST_RATE))
 sample_bout_distance <- function(n = 1) {
   d <- rgamma(n, shape = BOUT_DIST_SHAPE, rate = BOUT_DIST_RATE)
   pmax(d, 5)  # floor at 5m (one cell)
